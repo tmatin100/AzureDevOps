@@ -1,19 +1,43 @@
-# Starter pipeline
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
+trigger: none
+#  branches:
+#    include:
+#    - main
 
-trigger:
-- main
-
+variables:
+  vmImageName: 'ubuntu-latest'
+  resourceGroupName: 'iac-demo'
+  location: 'canadacentral'
+  paramFile: 'projects/sample/iac-bicep/iac-bicep-webapp/parameters/network.dev.bicepparam'
+  templateFile: 'projects/sample/iac-bicep/iac-bicep-webapp/src/network.bicep'
+  
 pool:
-  vmImage: ubuntu-latest
+  vmImage: $(vmImageName)
 
-steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
-
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
+stages:
+- stage: Deploy
+  jobs:
+  - deployment: Deploy
+    displayName: Deploy Azure BiCEP Infrastructure
+    environment: 
+      name: 'dev'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - checkout: self
+          - task: AzureCLI@2
+            displayName: Preview Bicep Changes
+            inputs:
+              azureSubscription: 'Subscritpion1'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az --version
+                az upgrade --yes
+                echo "Deploy Bicep template"
+                pwd
+                echo "Check listing"
+                ls -lrt
+                az deployment group create --resource-group $(resourceGroupName) \
+                  --template-file $(templateFile) \
+                  --parameters $(paramFile)
